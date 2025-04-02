@@ -1,0 +1,24 @@
+{
+  "name": "crm_project",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "electron ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Putterhead/CRM_Project.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Putterhead/CRM_Project/issues"
+  },
+  "homepage": "https://github.com/Putterhead/CRM_Project#readme",
+  "description": "",
+  "devDependencies": {
+    "electron": "^35.1.2"
+  }
+}
