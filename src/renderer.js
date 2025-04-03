@@ -8,18 +8,26 @@ document.addEventListener('DOMContentLoaded', () => {
         // Initialize Bootstrap components
         const addProfileModal = new bootstrap.Modal(document.getElementById('addProfileModal'));
         const editProfileModal = new bootstrap.Modal(document.getElementById('editProfileModal'));
+        const logContactModal = new bootstrap.Modal(document.getElementById('logContactModal'));
+        const contactHistoryModal = new bootstrap.Modal(document.getElementById('contactHistoryModal'));
 
         // DOM Elements
         const profileForm = document.getElementById('profileForm');
         const editProfileForm = document.getElementById('editProfileForm');
+        const contactForm = document.getElementById('contactForm');
         const saveProfileButton = document.getElementById('saveProfile');
         const updateProfileButton = document.getElementById('updateProfile');
+        const saveContactButton = document.getElementById('saveContact');
+        const addContactBtn = document.getElementById('addContactBtn');
         const searchInput = document.getElementById('searchInput');
         const searchButton = document.getElementById('searchButton');
         const profilesTableBody = document.getElementById('profilesTableBody');
+        const contactHistoryTableBody = document.getElementById('contactHistoryTableBody');
+        const contactHistoryName = document.getElementById('contactHistoryName');
 
-        if (!profileForm || !editProfileForm || !saveProfileButton || !updateProfileButton || 
-            !searchInput || !searchButton || !profilesTableBody) {
+        if (!profileForm || !editProfileForm || !contactForm || !saveProfileButton || 
+            !updateProfileButton || !saveContactButton || !searchInput || !searchButton || 
+            !profilesTableBody || !contactHistoryTableBody || !contactHistoryName) {
             console.error('Required DOM elements not found');
             return;
         }
@@ -38,6 +46,18 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             console.log('Update button clicked');
             handleUpdateProfile(editProfileModal);
+        });
+
+        saveContactButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log('Save contact button clicked');
+            handleSaveContact(logContactModal);
+        });
+
+        addContactBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const profileId = document.getElementById('contactProfileId').value;
+            showLogContactModal(profileId);
         });
         
         searchButton.addEventListener('click', handleSearch);
@@ -80,6 +100,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>${profile.phone || ''}</td>
                     <td><span class="badge bg-${getStatusBadgeColor(profile.status || 'unknown')}">${profile.status || 'Unknown'}</span></td>
                     <td>
+                        <button class="btn btn-sm btn-outline-info btn-action" onclick="handleViewContacts(${profile.id})">
+                            Contacts
+                        </button>
                         <button class="btn btn-sm btn-outline-primary btn-action" onclick="handleEditProfile(${profile.id})">
                             Edit
                         </button>
@@ -267,6 +290,143 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('Failed to load profile: ' + error.message);
             }
         }
+
+        // Handle viewing contact history
+        window.handleViewContacts = async function(id) {
+            if (!id) return;
+
+            try {
+                // Get profile details
+                const [profile] = await ipcRenderer.invoke('database-operation', {
+                    operation: 'all',
+                    sql: 'SELECT * FROM profiles WHERE id = ?',
+                    params: [id]
+                });
+
+                if (!profile) {
+                    throw new Error('Profile not found');
+                }
+
+                // Set profile name in modal
+                contactHistoryName.textContent = `Contacts for ${profile.first_name} ${profile.last_name}`;
+                
+                // Store profile ID for new contacts
+                document.getElementById('contactProfileId').value = profile.id;
+
+                // Get contact history
+                const contacts = await ipcRenderer.invoke('database-operation', {
+                    operation: 'all',
+                    sql: `SELECT * FROM contacts 
+                          WHERE profile_id = ? 
+                          ORDER BY date DESC, created_at DESC`,
+                    params: [id]
+                });
+
+                // Display contacts
+                displayContacts(contacts);
+
+                // Show modal
+                contactHistoryModal.show();
+            } catch (error) {
+                console.error('Error loading contact history:', error);
+                alert('Failed to load contact history: ' + error.message);
+            }
+        }
+
+        // Display contacts in the table
+        function displayContacts(contacts) {
+            if (!Array.isArray(contacts)) {
+                console.error('Invalid contacts data:', contacts);
+                return;
+            }
+
+            contactHistoryTableBody.innerHTML = '';
+            
+            contacts.forEach(contact => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${formatDate(contact.date)}</td>
+                    <td>${contact.type || ''}</td>
+                    <td>${contact.details || ''}</td>
+                    <td>${formatCurrency(contact.value_eur)}</td>
+                `;
+                contactHistoryTableBody.appendChild(row);
+            });
+        }
+
+        // Show log contact modal
+        function showLogContactModal(profileId) {
+            if (!profileId) return;
+
+            // Set today's date as default
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('contactDate').value = today;
+            
+            // Reset form
+            contactForm.reset();
+            document.getElementById('contactProfileId').value = profileId;
+            document.getElementById('contactDate').value = today;
+            
+            // Hide contact history modal and show log contact modal
+            contactHistoryModal.hide();
+            logContactModal.show();
+        }
+
+        // Handle saving new contact
+        async function handleSaveContact(modal) {
+            console.log('Handling save contact...');
+            
+            // Form validation
+            const profileId = document.getElementById('contactProfileId').value;
+            const date = document.getElementById('contactDate').value;
+            const type = document.getElementById('contactType').value;
+            const details = document.getElementById('contactDetails').value.trim();
+            const value = parseFloat(document.getElementById('contactValue').value) || 0;
+
+            if (!profileId || !date || !type || !details) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
+            if (details.length > 300) {
+                alert('Details must be 300 characters or less');
+                return;
+            }
+
+            try {
+                await ipcRenderer.invoke('database-operation', {
+                    operation: 'run',
+                    sql: `INSERT INTO contacts (profile_id, date, type, details, value_eur) 
+                          VALUES (?, ?, ?, ?, ?)`,
+                    params: [profileId, date, type, details, value]
+                });
+
+                // Reset form and close modal
+                contactForm.reset();
+                modal.hide();
+
+                // Refresh contact history
+                handleViewContacts(profileId);
+            } catch (error) {
+                console.error('Error saving contact:', error);
+                alert('Failed to save contact: ' + error.message);
+            }
+        }
+
+        // Utility function to format date
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString();
+        }
+
+        // Utility function to format currency
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('de-DE', {
+                style: 'currency',
+                currency: 'EUR'
+            }).format(value);
+        }
+
     } catch (error) {
         console.error('Error initializing UI:', error);
         alert('Failed to initialize application: ' + error.message);

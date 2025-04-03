@@ -164,6 +164,88 @@
                 </div>
             </div>
         </div>
+
+        <!-- Log Contact Modal -->
+        <div class="modal fade" id="logContactModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Log Contact</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="contactForm">
+                            <input type="hidden" id="contactProfileId">
+                            <div class="mb-3">
+                                <label for="contactDate" class="form-label">Date</label>
+                                <input type="date" class="form-control" id="contactDate" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="contactType" class="form-label">Type</label>
+                                <select class="form-select" id="contactType" required>
+                                    <option value="">Select type...</option>
+                                    <option value="Call">Call</option>
+                                    <option value="Email">Email</option>
+                                    <option value="Meeting">Meeting</option>
+                                    <option value="Offer Submission">Offer Submission</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="contactDetails" class="form-label">Details</label>
+                                <textarea class="form-control" id="contactDetails" rows="3" maxlength="300" required></textarea>
+                                <div class="form-text">Maximum 300 characters</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="contactValue" class="form-label">Value (EUR)</label>
+                                <input type="number" class="form-control" id="contactValue" min="0" step="0.01" value="0">
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="saveContact">Save Contact</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact History Modal -->
+        <div class="modal fade" id="contactHistoryModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Contact History</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0" id="contactHistoryName"></h6>
+                            <button type="button" class="btn btn-primary btn-sm" id="addContactBtn">
+                                Log New Contact
+                            </button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Type</th>
+                                        <th>Details</th>
+                                        <th>Value (EUR)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="contactHistoryTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="./node_modules/@popperjs/core/dist/umd/popper.min.js"></script>
