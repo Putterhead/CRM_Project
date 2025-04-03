@@ -1,10 +1,11 @@
-const { app, BrowserWindow, ipcMain } = require('electron')
-const path = require('path')
-const database = require('./src/database')
+const { app, BrowserWindow, ipcMain } = require('electron');
+const path = require('path');
+const Database = require('./src/database');
 
 console.log('Starting application...')
 
 let mainWindow = null;
+let database;
 
 function createWindow () {
     console.log('Creating window...')
@@ -33,9 +34,9 @@ function createWindow () {
     })
 }
 
-// Initialize database when app is ready
 app.whenReady().then(async () => {
     console.log('App is ready, initializing database...')
+    database = new Database();
     try {
         await database.init()
         console.log('Database initialized successfully')
@@ -47,6 +48,43 @@ app.whenReady().then(async () => {
                 return await database[operation](sql, params);
             } catch (error) {
                 console.error('Database operation error:', error);
+                throw error;
+            }
+        });
+
+        ipcMain.handle('db-run', async (event, sql, params) => {
+            try {
+                return await database.run(sql, params);
+            } catch (error) {
+                console.error('Database error:', error);
+                throw error;
+            }
+        });
+
+        ipcMain.handle('db-get', async (event, sql, params) => {
+            try {
+                return await database.get(sql, params);
+            } catch (error) {
+                console.error('Database error:', error);
+                throw error;
+            }
+        });
+
+        ipcMain.handle('db-all', async (event, sql, params) => {
+            try {
+                return await database.all(sql, params);
+            } catch (error) {
+                console.error('Database error:', error);
+                throw error;
+            }
+        });
+
+        // Profile operations
+        ipcMain.handle('find-duplicate-profile', async (event, profile) => {
+            try {
+                return await database.findDuplicateProfile(profile);
+            } catch (error) {
+                console.error('Error checking for duplicate profile:', error);
                 throw error;
             }
         });
@@ -78,7 +116,7 @@ app.on('before-quit', async (event) => {
     console.log('Application is quitting, creating backup...')
     try {
         await database.backup()
-        database.close()
+        await database.close()
         console.log('Backup created and database closed')
         process.exit(0)
     } catch (error) {
