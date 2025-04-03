@@ -7,15 +7,19 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         // Initialize Bootstrap components
         const addProfileModal = new bootstrap.Modal(document.getElementById('addProfileModal'));
+        const editProfileModal = new bootstrap.Modal(document.getElementById('editProfileModal'));
 
         // DOM Elements
         const profileForm = document.getElementById('profileForm');
+        const editProfileForm = document.getElementById('editProfileForm');
         const saveProfileButton = document.getElementById('saveProfile');
+        const updateProfileButton = document.getElementById('updateProfile');
         const searchInput = document.getElementById('searchInput');
         const searchButton = document.getElementById('searchButton');
         const profilesTableBody = document.getElementById('profilesTableBody');
 
-        if (!profileForm || !saveProfileButton || !searchInput || !searchButton || !profilesTableBody) {
+        if (!profileForm || !editProfileForm || !saveProfileButton || !updateProfileButton || 
+            !searchInput || !searchButton || !profilesTableBody) {
             console.error('Required DOM elements not found');
             return;
         }
@@ -28,6 +32,12 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             console.log('Save button clicked');
             handleSaveProfile(addProfileModal);
+        });
+
+        updateProfileButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log('Update button clicked');
+            handleUpdateProfile(editProfileModal);
         });
         
         searchButton.addEventListener('click', handleSearch);
@@ -129,6 +139,58 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // Handle profile update
+        async function handleUpdateProfile(modal) {
+            console.log('Handling update profile...');
+            
+            // Form validation
+            const firstName = document.getElementById('editFirstName').value.trim();
+            const lastName = document.getElementById('editLastName').value.trim();
+            const status = document.getElementById('editStatus').value;
+            const profileId = document.getElementById('editProfileId').value;
+
+            if (!firstName || !lastName || !status || !profileId) {
+                alert('First name, last name, and status are required');
+                return;
+            }
+
+            const formData = {
+                id: profileId,
+                first_name: firstName,
+                last_name: lastName,
+                company: document.getElementById('editCompany').value.trim(),
+                role: document.getElementById('editRole').value.trim(),
+                email: document.getElementById('editEmail').value.trim(),
+                phone: document.getElementById('editPhone').value.trim(),
+                status: status
+            };
+
+            console.log('Update form data:', formData);
+
+            try {
+                await ipcRenderer.invoke('database-operation', {
+                    operation: 'run',
+                    sql: `UPDATE profiles 
+                          SET first_name = ?, last_name = ?, company = ?, 
+                              role = ?, email = ?, phone = ?, status = ?
+                          WHERE id = ?`,
+                    params: [formData.first_name, formData.last_name, formData.company, 
+                            formData.role, formData.email, formData.phone, 
+                            formData.status, formData.id]
+                });
+
+                // Reset form and close modal
+                editProfileForm.reset();
+                modal.hide();
+
+                // Reload profiles
+                await loadProfiles();
+            } catch (error) {
+                console.error('Error updating profile:', error);
+                alert('Failed to update profile: ' + error.message);
+            }
+        }
+
         // Handle search
         async function handleSearch() {
             const searchTerm = searchInput.value.toLowerCase().trim();
@@ -173,9 +235,37 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Handle profile editing (to be implemented)
-        window.handleEditProfile = function(id) {
-            alert('Edit functionality coming soon!');
+        // Handle profile editing
+        window.handleEditProfile = async function(id) {
+            if (!id) return;
+
+            try {
+                const [profile] = await ipcRenderer.invoke('database-operation', {
+                    operation: 'all',
+                    sql: 'SELECT * FROM profiles WHERE id = ?',
+                    params: [id]
+                });
+
+                if (!profile) {
+                    throw new Error('Profile not found');
+                }
+
+                // Populate edit form
+                document.getElementById('editProfileId').value = profile.id;
+                document.getElementById('editFirstName').value = profile.first_name || '';
+                document.getElementById('editLastName').value = profile.last_name || '';
+                document.getElementById('editCompany').value = profile.company || '';
+                document.getElementById('editRole').value = profile.role || '';
+                document.getElementById('editEmail').value = profile.email || '';
+                document.getElementById('editPhone').value = profile.phone || '';
+                document.getElementById('editStatus').value = profile.status || 'Lead';
+
+                // Show modal
+                editProfileModal.show();
+            } catch (error) {
+                console.error('Error loading profile for edit:', error);
+                alert('Failed to load profile: ' + error.message);
+            }
         }
     } catch (error) {
         console.error('Error initializing UI:', error);
